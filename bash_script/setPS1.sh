@@ -51,8 +51,8 @@ $BLOCK_MARKER
 
 export PS1='${blue}┏[${end}${isOk}${blue}]-[${end}${user}${blue}]-[${end}${date}${blue}]\n┣[${end}${cwd}${blue}]\n${blue}┗${end}${isGitBranch}${blue}[${end}${isRoot}${blue}]${end} '
 export LANG="zh_CN.UTF-8"
-export VISUAL="nano"
-export EDITOR="nano"
+export VISUAL="nano -ml"
+export EDITOR="nano -ml"
 # 只在交互式 shell 中启用 bind
 if [[ \$- == *i* ]] && [ -n "\$PS1" ]; then
     bind '"\t":menu-complete'

@@ -73,7 +73,8 @@ $BLOCK_MARKER
 $(generate_extra_keys)
 extra-keys-text-all-caps = false
 allow-external-apps = true
-soft-keyboard-toggle-behaviour = enable/disable
+# soft-keyboard-toggle-behaviour = enable/disable
+soft-keyboard-toggle-behaviour = show/hide
 shortcut.create-session = ctrl + t
 shortcut.next-session = ctrl + 2
 shortcut.previous-session = ctrl + 1

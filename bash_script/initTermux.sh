@@ -7,9 +7,6 @@ readonly setPS1="$SCRIPT_DIR/setPS1.sh"
 readonly setTermuxProp="$SCRIPT_DIR/setTermuxProp.sh"
 readonly changeTermuxRepo="$SCRIPT_DIR/changeTermuxRepo.sh"
 ########################################
-readonly JNI_PACKAGES=(clang make openjdk-17 ndk-sysroot libandroid-support cmake pkg-config binutils)
-readonly CUSTOM_PACKAGES=(tsu git ffmpeg)
-########################################
 main() {
 log "欢迎使用初始化脚本"
 log s "正在换源中..."

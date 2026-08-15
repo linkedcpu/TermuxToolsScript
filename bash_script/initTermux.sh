@@ -6,7 +6,7 @@ readonly setPS1="$SCRIPT_DIR/setPS1.sh"
 readonly setTermuxProp="$SCRIPT_DIR/setTermuxProp.sh"
 readonly changeTermuxRepo="$SCRIPT_DIR/changeTermuxRepo.sh"
 readonly setNvimConfig="$SCRIPT_DIR/setNvimConfig.sh"
-readonly setAndroidSdk="$SCRIPT_DIR/setAndroidSdk.sh""
+readonly setAndroidSdk="$SCRIPT_DIR/setAndroidSdk.sh"
 ########################################
 main() {
     echo "欢迎使用初始化脚本"

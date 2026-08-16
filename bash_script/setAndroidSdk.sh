@@ -2,80 +2,116 @@
 set -e
 
 ########################################
-# 1. 环境标记（只定义一次）
+# 0. 配置区（只改这里）
+########################################
+GITHUB_PROXY="https://gh-proxy.org"
+NDK_URL="${GITHUB_PROXY}/github.com/lzhiyong/termux-ndk/releases/download/android-ndk/android-ndk-r29-aarch64.tar.xz"
+SDK_URL="https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip"
+
+# ✅ 校验值已帮你算好/查证好，不用再动
+NDK_SHA256="02e10e4ddfe8deaeb0bd0cf29d04c981ed5bc8a5d6b560ebb9e7661f472d684b"
+SDK_SHA256="2d2d50857e4eb553af5a6dc3ad507a17adf43d115264b1afc116f95c92e5e258"
+
+########################################
+# 1. 校验函数
+########################################
+verify_file() {
+    local file="$1"
+    local expected="$2"
+    local actual
+    actual=$(sha256sum "$file" | awk '{print $1}')
+    if [[ "$actual" != "$expected" ]]; then
+        echo "❌ 校验失败，删除损坏文件: $file"
+        echo "   期望: $expected"
+        echo "   实际: $actual"
+        rm -f "$file"
+        return 1
+    fi
+    echo "✅ 校验通过: $file"
+    return 0
+}
+
+########################################
+# 2. 环境标记
 ########################################
 ENV_START='# ===== TERMUX_ANDROID_ENV_START ====='
 ENV_END='# ===== TERMUX_ANDROID_ENV_END ====='
 BASHRC="$HOME/.bashrc"
 
-########################################
-# 2. 确保 .bashrc 存在（关键修复）
-########################################
-[[ -f "$BASHRC" ]] || touch "$BASHRC"
-
-########################################
-# 3. 删除旧配置块
-########################################
 sed -i "/$ENV_START/,/$ENV_END/d" "$BASHRC"
-
-########################################
-# 4. 写入最新配置块
-########################################
 cat <<EOF >> "$BASHRC"
 
 $ENV_START
 export JAVA_HOME=\$PREFIX/lib/jvm/java-21-openjdk
 export ANDROID_HOME=\$HOME/android-sdk
-export PATH=\$JAVA_HOME/bin:\$ANDROID_HOME/cmdline-tools/latest/bin:\$PATH
+export ANDROID_NDK_HOME=\$ANDROID_HOME/ndk/29.0.14206865
+export PATH=\$JAVA_HOME/bin:\$ANDROID_HOME/cmdline-tools/latest/bin:\$ANDROID_HOME/build-tools/34.0.0:\$PATH
 $ENV_END
 EOF
 
-########################################
-# 5. 立即生效
-########################################
 source "$BASHRC"
 
 ########################################
-# 6. 安装系统依赖
+# 3. 最小依赖
 ########################################
-echo "==> 安装基础依赖"
 pkg update -y
-pkg install -y openjdk-21 wget unzip git aapt aapt2 apksigner dx ecj gradle termux-tools
+pkg install -y openjdk-21 wget tar xz-utils git aapt2 apksigner gradle termux-tools
 
 ########################################
-# 7. 安装 Android SDK
+# 4. 下载并校验（全自动，坏了自动重下）
 ########################################
-echo "==> 安装 Android SDK"
-mkdir -p "$ANDROID_HOME/cmdline-tools"
 cd "$TMPDIR"
 
-wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-unzip commandlinetools-linux-*.zip
+# SDK
+if [[ -f "commandlinetools.zip" ]]; then
+    verify_file "commandlinetools.zip" "$SDK_SHA256" || true
+fi
+until [[ -f "commandlinetools.zip" && "$(sha256sum commandlinetools.zip | awk '{print $1}')" == "$SDK_SHA256" ]]; do
+    echo "==> 下载 SDK"
+    wget -c "$SDK_URL" -O commandlinetools.zip
+done
+
+# NDK
+if [[ -f "android-ndk-r29-aarch64.tar.xz" ]]; then
+    verify_file "android-ndk-r29-aarch64.tar.xz" "$NDK_SHA256" || true
+fi
+until [[ -f "android-ndk-r29-aarch64.tar.xz" && "$(sha256sum android-ndk-r29-aarch64.tar.xz | awk '{print $1}')" == "$NDK_SHA256" ]]; do
+    echo "==> 下载 NDK"
+    wget -c "$NDK_URL" -O android-ndk-r29-aarch64.tar.xz
+done
+
+########################################
+# 5. 安装（强制覆盖）
+########################################
+rm -rf "$ANDROID_HOME/cmdline-tools"
+unzip -o commandlinetools.zip
 mv cmdline-tools "$ANDROID_HOME/cmdline-tools/latest"
 
-########################################
-# 8. 安装 SDK 组件
-########################################
-yes | sdkmanager --licenses > /dev/null
+yes | sdkmanager --licenses > /dev/null || true
 sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
+rm -rf "$ANDROID_HOME/ndk"
+mkdir -p "$ANDROID_HOME/ndk"
+tar -xJf android-ndk-r29-aarch64.tar.xz -C "$ANDROID_HOME/ndk/"
+mv "$ANDROID_HOME/ndk/android-ndk-r29" "$ANDROID_HOME/ndk/29.0.14206865"
+
+"$ANDROID_NDK_HOME/ndk-build" --version
+
 ########################################
-# 9. 强制 Gradle 使用 Termux 的 ARM64 aapt2
+# 6. Gradle 配置
 ########################################
 mkdir -p ~/.gradle
 echo "android.aapt2FromMavenOverride=$PREFIX/bin/aapt2" > ~/.gradle/gradle.properties
 
-########################################
-# 10. 清理旧 Gradle 缓存
-########################################
-rm -rf ~/.gradle/caches
+./gradlew --stop 2>/dev/null || true
+rm -rf ~/.gradle/caches ~/.gradle/daemon
 
 ########################################
-# 11. 验证环境
+# 7. 验证
 ########################################
 echo ""
-echo "✅ Termux Android 编译环境已就绪"
+echo "✅ Termux Android 编译环境已就绪（无参数 / 自校验 / 可重复跑）"
 java -version
 sdkmanager --version
 aapt2 version
-gradle --version
+"$ANDROID_NDK_HOME/ndk-build" --version
